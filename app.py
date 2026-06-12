@@ -32,11 +32,11 @@ st.markdown("""
         border-radius: 12px; padding: 16px 20px; text-align: center;
     }
     .metric-value { font-size: 2rem; font-weight: 800; }
-    .metric-label { font-size: 0.75rem; color: #6B7A99;
+    .metric-label { font-size: 0.75rem; color: #7C90A0;
                     text-transform: uppercase; letter-spacing: 0.08em; }
     .risk-box { border-radius: 10px; padding: 14px 18px;
                 font-weight: 600; font-size: 0.9rem; }
-    div[data-testid="stTabs"] button { color: #6B7A99 !important; font-weight: 600; }
+    div[data-testid="stTabs"] button { color: #7B0D1E !important; font-weight: 600; }
     div[data-testid="stTabs"] button[aria-selected="true"] {
         color: #E05252 !important; border-bottom-color: #7B0D1E !important; }
     .section-title { font-size: 0.72rem; color: #6B7A99;
