@@ -39,7 +39,7 @@ st.markdown("""
     div[data-testid="stTabs"] button { color: #002626 !important; font-weight: 600; }
     div[data-testid="stTabs"] button[aria-selected="true"] {
         color: #7B0D1E !important; border-bottom-color: #002626 !important; }
-    .section-title { font-size: 0.72rem; color: #6B7A99;
+    .section-title { font-size: 0.72rem; color: #002626;
         text-transform: uppercase; letter-spacing: 0.1em;
         margin-bottom: 0.6rem; font-weight: 700; }
 </style>
