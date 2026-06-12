@@ -136,7 +136,7 @@ col_logo, col_title, col_info = st.columns([1, 6, 3])
 with col_logo:
     st.markdown("## 🩸")
 with col_title:
-    st.markdown("## Triagem**Preditiva**HCV** - HEMOPA")
+    st.markdown("## Triagem**Preditiva**HCV - HEMOPA")
     st.caption("Triagem preditiva de resultado NAT-HCV em doadores de sangue")
 with col_info:
     st.markdown(f"""
