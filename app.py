@@ -25,10 +25,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .stApp { background-color: #FFFBFE; color: #002626; }
+    .stApp { background-color: #FFFBFE; color: #E9E9F2; }
     .block-container { padding: 1.5rem 2rem; }
     .metric-card {
-        background: #002626; border: 1px solid #7C90A0;
+        background: #E9E9F2; border: 1px solid #7C90A0;
         border-radius: 12px; padding: 16px 20px; text-align: center;
     }
     .metric-value { font-size: 2rem; font-weight: 800; }
