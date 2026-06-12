@@ -361,7 +361,7 @@ with tab2:
             plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
             xaxis=dict(title="1 - Especificidade",color="#6B7A99",gridcolor="#1E3050"),
             yaxis=dict(title="Sensibilidade",color="#6B7A99",gridcolor="#1E3050"),
-            legend=dict(bgcolor="#162032",bordercolor="#1E3050",
+            legend=dict(bgcolor="#E9E9F2",bordercolor="#1E3050",
                         borderwidth=1,font=dict(size=11)),
             margin=dict(t=10,b=40,l=50,r=10))
         st.plotly_chart(fig_roc, use_container_width=True)
@@ -375,7 +375,7 @@ with tab2:
             showscale=False, text=cm,
             texttemplate="%{text}", textfont={"size":22,"color":"white"}))
         fig_cm.update_layout(height=320, paper_bgcolor="#0B1120",
-            plot_bgcolor="#162032", font_color="#E8EDF5",
+            plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
             xaxis=dict(title="Predito",color="#6B7A99"),
             yaxis=dict(title="Real",color="#6B7A99"),
             margin=dict(t=10,b=50,l=70,r=10))
@@ -389,7 +389,7 @@ with tab2:
     fig_feat = px.bar(feat_df, x="variavel", y="importancia",
         color="importancia", color_continuous_scale=["#1E3050","#E05252"])
     fig_feat.update_layout(height=260, paper_bgcolor="#0B1120",
-        plot_bgcolor="#162032", font_color="#E8EDF5",
+        plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
         coloraxis_showscale=False,
         xaxis=dict(color="#6B7A99",gridcolor="#1E3050"),
         yaxis=dict(color="#6B7A99",gridcolor="#1E3050"),
@@ -401,7 +401,7 @@ with tab2:
 # ══════════════════════════════════════════════════════════════
 with tab3:
     st.markdown("""
-    <div style='background:#162032;border:1px dashed #1E3050;
+    <div style='background:#E9E9F2;border:1px dashed #E9E9F2;
         border-radius:12px;padding:20px;margin-bottom:20px'>
         <b>📂 Carregar planilha de doadores</b><br>
         <span style='color:#6B7A99;font-size:0.85rem'>
