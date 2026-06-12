@@ -28,7 +28,7 @@ st.markdown("""
     .stApp { background-color: #FFFBFE; color: #002626; }
     .block-container { padding: 1.5rem 2rem; }
     .metric-card {
-        background: #7C90A0; border: 1px solid #7C90A0;
+        background: #002626; border: 1px solid #7C90A0;
         border-radius: 12px; padding: 16px 20px; text-align: center;
     }
     .metric-value { font-size: 2rem; font-weight: 800; }
