@@ -455,7 +455,7 @@ with tab3:
                     </div>""", unsafe_allow_html=True)
 
             st.markdown("---")
-            st.dataframe(df_resultado.style.applymap(colorir, subset=["risco"]),
+            st.dataframe(df_resultado.style.map(colorir, subset=["risco"]),
                 use_container_width=True, height=350)
             csv_out = df_resultado.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️  Exportar resultados (.csv)",
@@ -466,5 +466,5 @@ with tab3:
         st.info("Nenhum arquivo carregado. Exibindo amostra dos dados simulados.")
         amostra = df.sample(10, random_state=7).copy()
         df_resultado, _ = classificar_lote(amostra)
-        st.dataframe(df_resultado.style.applymap(colorir, subset=["risco"]),
+        st.dataframe(df_resultado.style.map(colorir, subset=["risco"]),
             use_container_width=True, height=350)
