@@ -383,10 +383,10 @@ with tab2:
 
     st.markdown('<div class="section-title">Importância Global das Variáveis</div>',
                 unsafe_allow_html=True)
-    feat_df = pd.DataFrame({"Variavel": metricas["feature_names"],
+    feat_df = pd.DataFrame({"variavel": metricas["feature_names"],
         "importancia": modelo.feature_importances_
     }).sort_values("importancia", ascending=False)
-    fig_feat = px.bar(feat_df, x="Variavel", y="Importancia",
+    fig_feat = px.bar(feat_df, x="variavel", y="importancia",
         color="importancia", color_continuous_scale=["#1E3050","#E05252"])
     fig_feat.update_layout(height=260, paper_bgcolor="#E9E9F2",
         plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
