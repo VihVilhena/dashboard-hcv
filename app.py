@@ -300,7 +300,7 @@ with tab1:
             fig_imp = go.Figure(go.Bar(x=feat_imp.values, y=feat_imp.index,
                 orientation="h", marker_color="#E05252", marker_line_width=0))
             fig_imp.update_layout(height=200, paper_bgcolor="#0B1120",
-                plot_bgcolor="#162032", font_color="#E8EDF5",
+                plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
                 margin=dict(t=5,b=5,l=5,r=5),
                 xaxis=dict(showgrid=False,color="#6B7A99"),
                 yaxis=dict(color="#6B7A99"))
@@ -358,7 +358,7 @@ with tab2:
             line=dict(color="#2DD4BF",width=2.5),
             fill="tozeroy", fillcolor="rgba(45,212,191,0.08)"))
         fig_roc.update_layout(height=320, paper_bgcolor="#0B1120",
-            plot_bgcolor="#162032", font_color="#E8EDF5",
+            plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
             xaxis=dict(title="1 - Especificidade",color="#6B7A99",gridcolor="#1E3050"),
             yaxis=dict(title="Sensibilidade",color="#6B7A99",gridcolor="#1E3050"),
             legend=dict(bgcolor="#162032",bordercolor="#1E3050",
