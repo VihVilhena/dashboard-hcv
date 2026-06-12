@@ -136,11 +136,11 @@ col_logo, col_title, col_info = st.columns([1, 6, 3])
 with col_logo:
     st.markdown("## 🩸")
 with col_title:
-    st.markdown("## HCV**predict** · HEMOPA")
+    st.markdown("## Triagem**Preditiva**HCV** - HEMOPA")
     st.caption("Triagem preditiva de resultado NAT-HCV em doadores de sangue")
 with col_info:
     st.markdown(f"""
-    <div style='text-align:right; color:#6B7A99; font-size:0.78rem; margin-top:10px'>
+    <div style='text-align:right; color:#002626; font-size:0.78rem; margin-top:10px'>
     Modelo: Gradient Boosting &nbsp;|&nbsp;
     AUC: <b style='color:#2DD4BF'>{metricas['auc']}</b> &nbsp;|&nbsp;
     Dados: simulados (protótipo)
@@ -237,15 +237,15 @@ with tab1:
             if pct < 25:
                 risco, cor, emoji = "BAIXO",  "#22C55E", "✅"
                 msg = "Perfil compatível com doador apto. Seguir protocolo padrão de triagem."
-                bg  = "#052E16"
+                bg  = "#002626"
             elif pct < 60:
                 risco, cor, emoji = "MÉDIO",  "#F59E0B", "⚡"
                 msg = "Perfil de risco moderado. Considerar repetição da triagem sorológica."
-                bg  = "#2D1F00"
+                bg  = "#002626"
             else:
                 risco, cor, emoji = "ALTO",   "#EF4444", "⚠️"
                 msg = "Alto risco de NAT positivo. Encaminhar para teste confirmatório."
-                bg  = "#3B1A1A"
+                bg  = "#002626"
 
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number",
@@ -263,8 +263,8 @@ with tab1:
                                  "thickness":0.8,"value":pct}
                 }
             ))
-            fig_gauge.update_layout(height=260, paper_bgcolor="#0B1120",
-                font_color="#E8EDF5", margin=dict(t=20,b=10,l=20,r=20))
+            fig_gauge.update_layout(height=260, paper_bgcolor="#7C90A0",
+                font_color="#002626", margin=dict(t=20,b=10,l=20,r=20))
             st.plotly_chart(fig_gauge, use_container_width=True)
 
             st.markdown(f"""
