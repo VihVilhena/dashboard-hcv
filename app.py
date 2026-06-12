@@ -136,7 +136,7 @@ col_logo, col_title, col_info = st.columns([1, 6, 3])
 with col_logo:
     st.markdown("## 🩸")
 with col_title:
-    st.markdown("## HCV**Predict - HEMOPA")
+    st.markdown("## HCV Predict - HEMOPA")
     st.caption("Triagem preditiva de resultado NAT-HCV em doadores de sangue")
 with col_info:
     st.markdown(f"""
@@ -357,10 +357,10 @@ with tab2:
             name=f"Gradient Boosting (AUC={auc:.3f})",
             line=dict(color="#2DD4BF",width=2.5),
             fill="tozeroy", fillcolor="rgba(45,212,191,0.08)"))
-        fig_roc.update_layout(height=320, paper_bgcolor="#0B1120",
+        fig_roc.update_layout(height=320, paper_bgcolor="#E9E9F2",
             plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-            xaxis=dict(title="1 - Especificidade",color="#6B7A99",gridcolor="#1E3050"),
-            yaxis=dict(title="Sensibilidade",color="#6B7A99",gridcolor="#1E3050"),
+            xaxis=dict(title="1 - Especificidade",color="#000000",gridcolor="#1E3050"),
+            yaxis=dict(title="Sensibilidade",color="#000000",gridcolor="#1E3050"),
             legend=dict(bgcolor="#E9E9F2",bordercolor="#1E3050",
                         borderwidth=1,font=dict(size=11)),
             margin=dict(t=10,b=40,l=50,r=10))
@@ -374,10 +374,10 @@ with tab2:
             colorscale=[[0,"#162032"],[1,"#E05252"]],
             showscale=False, text=cm,
             texttemplate="%{text}", textfont={"size":22,"color":"white"}))
-        fig_cm.update_layout(height=320, paper_bgcolor="#0B1120",
+        fig_cm.update_layout(height=320, paper_bgcolor="#E9E9F2",
             plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-            xaxis=dict(title="Predito",color="#6B7A99"),
-            yaxis=dict(title="Real",color="#6B7A99"),
+            xaxis=dict(title="Predito",color="#000000"),
+            yaxis=dict(title="Real",color="#000000"),
             margin=dict(t=10,b=50,l=70,r=10))
         st.plotly_chart(fig_cm, use_container_width=True)
 
@@ -388,7 +388,7 @@ with tab2:
     }).sort_values("importancia", ascending=False)
     fig_feat = px.bar(feat_df, x="variavel", y="importancia",
         color="importancia", color_continuous_scale=["#1E3050","#E05252"])
-    fig_feat.update_layout(height=260, paper_bgcolor="#0B1120",
+    fig_feat.update_layout(height=260, paper_bgcolor="#E9E9F2",
         plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
         coloraxis_showscale=False,
         xaxis=dict(color="#6B7A99",gridcolor="#1E3050"),
