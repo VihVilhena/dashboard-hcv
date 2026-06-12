@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 
 # ── Configuração da página ─────────────────────────────────────
 st.set_page_config(
-    page_title="HCVPredict - HEMOPA",
+    page_title="HCVPredict",
     page_icon="🩸",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -28,7 +28,7 @@ st.markdown("""
     .stApp { background-color: #FFFBFE; color: #002626; }
     .block-container { padding: 1.5rem 2rem; }
     .metric-card {
-        background: #7C90A0; border: 1px solid #1E3050;
+        background: #7C90A0; border: 1px solid #7C90A0;
         border-radius: 12px; padding: 16px 20px; text-align: center;
     }
     .metric-value { font-size: 2rem; font-weight: 800; }
@@ -36,9 +36,9 @@ st.markdown("""
                     text-transform: uppercase; letter-spacing: 0.08em; }
     .risk-box { border-radius: 10px; padding: 14px 18px;
                 font-weight: 600; font-size: 0.9rem; }
-    div[data-testid="stTabs"] button { color: #7B0D1E !important; font-weight: 600; }
+    div[data-testid="stTabs"] button { color: #002626 !important; font-weight: 600; }
     div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #E05252 !important; border-bottom-color: #7B0D1E !important; }
+        color: #7B0D1E !important; border-bottom-color: #002626 !important; }
     .section-title { font-size: 0.72rem; color: #6B7A99;
         text-transform: uppercase; letter-spacing: 0.1em;
         margin-bottom: 0.6rem; font-weight: 700; }
