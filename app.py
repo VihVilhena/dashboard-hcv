@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 
 # ── Configuração da página ─────────────────────────────────────
 st.set_page_config(
-    page_title="HCVpredict · HEMOPA",
+    page_title="HCVPredict - HEMOPA",
     page_icon="🩸",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -25,10 +25,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .stApp { background-color: #0B1120; color: #E8EDF5; }
+    .stApp { background-color: #FFFBFE; color: #E8EDF5; }
     .block-container { padding: 1.5rem 2rem; }
     .metric-card {
-        background: #162032; border: 1px solid #1E3050;
+        background: #7C90A0; border: 1px solid #1E3050;
         border-radius: 12px; padding: 16px 20px; text-align: center;
     }
     .metric-value { font-size: 2rem; font-weight: 800; }
