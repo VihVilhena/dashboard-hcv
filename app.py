@@ -371,7 +371,7 @@ with tab2:
                     unsafe_allow_html=True)
         labels = ["NAT Negativo","NAT Positivo"]
         fig_cm = go.Figure(go.Heatmap(z=cm, x=labels, y=labels,
-            colorscale=[[0,"#162032"],[1,"#E05252"]],
+            colorscale=[[0,"#E9E9F2"],[1,"#E05252"]],
             showscale=False, text=cm,
             texttemplate="%{text}", textfont={"size":22,"color":"white"}))
         fig_cm.update_layout(height=320, paper_bgcolor="#E9E9F2",
@@ -383,11 +383,11 @@ with tab2:
 
     st.markdown('<div class="section-title">Importância Global das Variáveis</div>',
                 unsafe_allow_html=True)
-    feat_df = pd.DataFrame({"variavel": metricas["feature_names"],
-        "importancia": modelo.feature_importances_
+    feat_df = pd.DataFrame({"Variavel": metricas["feature_names"],
+        "Importancia": modelo.feature_importances_
     }).sort_values("importancia", ascending=False)
     fig_feat = px.bar(feat_df, x="variavel", y="importancia",
-        color="importancia", color_continuous_scale=["#1E3050","#E05252"])
+        color="Importancia", color_continuous_scale=["#1E3050","#E05252"])
     fig_feat.update_layout(height=260, paper_bgcolor="#E9E9F2",
         plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
         coloraxis_showscale=False,
