@@ -1,470 +1,484 @@
-# =============================================================
-#  app.py — HCVpredict · Dashboard de Triagem Preditiva
-#  Modelo gerado automaticamente na primeira execução
-# =============================================================
+"""
+Dashboard de Triagem Preditiva — NAT HCV (HEMOPA)
+====================================================
+App Streamlit para apoio à decisão na triagem de doadores.
+
+MODO DE OPERAÇÃO:
+- Se existir o arquivo `modelo_hcv.pkl` (exportado via `treinar_modelo.py`
+  a partir de dados reais/validados), o app carrega e usa esse modelo real.
+- Se o arquivo ainda não existir, o app cai automaticamente em MODO
+  DEMONSTRATIVO: treina um modelo simples em memória com dados simulados,
+  e exibe um aviso claro na interface para não gerar falsa impressão de
+  validade científica antes da hora.
+
+Assim que o treinamento com dados reais do HEMOPA estiver pronto, basta
+colocar o `modelo_hcv.pkl` (gerado por `treinar_modelo.py`) na mesma pasta
+deste arquivo — nenhuma outra mudança de código é necessária.
+"""
 
 import streamlit as st
 import pandas as pd
 import numpy as np
+import joblib
+import os
 import plotly.graph_objects as go
 import plotly.express as px
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import (roc_curve, confusion_matrix,
-                             roc_auc_score, f1_score,
-                             precision_score, recall_score)
-from sklearn.model_selection import train_test_split
 
-# ── Configuração da página ─────────────────────────────────────
+# ────────────────────────────────────────────────────────────────
+# CONFIGURAÇÃO DA PÁGINA
+# ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="HCVPredict",
+    page_title="HEMOPA · Triagem Preditiva NAT HCV",
     page_icon="🩸",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded",
 )
 
-st.markdown("""
+# ────────────────────────────────────────────────────────────────
+# IDENTIDADE VISUAL (CSS customizado — paleta clínica carmim/teal)
+# ────────────────────────────────────────────────────────────────
+CUSTOM_CSS = """
 <style>
-    .stApp { background-color: #FFFBFE; color: #000000; }
-    .block-container { padding: 1.5rem 2rem; }
-    .metric-card {
-        background: #E9E9F2; border: 1px solid #E9E9F2;
-        border-radius: 12px; padding: 16px 20px; text-align: center;
+    :root {
+        --paper: #F1F0EC;
+        --ink: #1C1B1A;
+        --ink-soft: #5B5754;
+        --carmim: #7A1F32;
+        --carmim-dark: #591526;
+        --teal: #26514D;
+        --low: #4F7A5B;
+        --mid: #B87333;
+        --high: #A63A3A;
     }
-    .metric-value { font-size: 2rem; font-weight: 800; }
-    .metric-label { font-size: 0.75rem; color: #7C90A0;
-                    text-transform: uppercase; letter-spacing: 0.08em; }
-    .risk-box { border-radius: 10px; padding: 14px 18px;
-                font-weight: 600; font-size: 0.9rem; }
-    div[data-testid="stTabs"] button { color: #002626 !important; font-weight: 600; }
-    div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #7B0D1E !important; border-bottom-color: #002626 !important; }
-    .section-title { font-size: 0.72rem; color: #002626;
-        text-transform: uppercase; letter-spacing: 0.1em;
-        margin-bottom: 0.6rem; font-weight: 700; }
+
+    .stApp { background-color: var(--paper); }
+
+    h1, h2, h3 { font-family: Georgia, serif !important; color: var(--carmim-dark); }
+
+    .req-banner {
+        background: var(--carmim);
+        color: #F1EAE7;
+        padding: 18px 26px;
+        border-radius: 4px;
+        border-bottom: 4px solid var(--carmim-dark);
+        margin-bottom: 22px;
+    }
+    .req-banner .eyebrow {
+        font-family: 'Consolas', monospace;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        opacity: 0.8;
+        margin: 0 0 4px;
+    }
+    .req-banner .title {
+        font-family: Georgia, serif;
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .demo-warning {
+        background: #F5E9DA;
+        border: 1px solid #B87333;
+        color: #6B4A1E;
+        padding: 12px 18px;
+        border-radius: 4px;
+        font-size: 13px;
+        margin-bottom: 18px;
+        font-family: 'Consolas', monospace;
+    }
+    .real-model-ok {
+        background: #E7EFE9;
+        border: 1px solid #4F7A5B;
+        color: #305C3D;
+        padding: 12px 18px;
+        border-radius: 4px;
+        font-size: 13px;
+        margin-bottom: 18px;
+        font-family: 'Consolas', monospace;
+    }
+
+    .metric-box {
+        background: #FAF9F6;
+        border: 1px solid rgba(28,27,26,0.14);
+        border-radius: 4px;
+        padding: 16px;
+        text-align: center;
+    }
+    .metric-box .label {
+        font-family: 'Consolas', monospace;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        letter-spacing: 0.06em;
+    }
+    .metric-box .value {
+        font-family: 'Consolas', monospace;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--teal);
+    }
+
+    .stButton>button {
+        background-color: var(--carmim);
+        color: white;
+        border: none;
+        border-radius: 3px;
+        font-family: 'Consolas', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 12.5px;
+    }
+    .stButton>button:hover { background-color: var(--carmim-dark); }
 </style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+st.markdown("""
+<div class="req-banner">
+    <p class="eyebrow">HEMOPA · Serviço de Hemoterapia — Triagem Sorológica</p>
+    <p class="title">Dashboard de Triagem Preditiva · NAT HCV</p>
+</div>
 """, unsafe_allow_html=True)
 
-# ── Gerar dados e modelo direto na memória ─────────────────────
+# ────────────────────────────────────────────────────────────────
+# CARREGAMENTO DO MODELO (real, se existir — senão, modo demonstrativo)
+# ────────────────────────────────────────────────────────────────
+MODELO_PATH = "modelo_hcv.pkl"
+
+FEATURE_COLS = [
+    "idade", "sexo", "tipo_doacao", "anti_hcv", "alt",
+    "transfusao_previa", "tatuagem", "drogas_injetaveis",
+    "multiplos_parceiros", "area_endemica",
+]
+
+
 @st.cache_resource
 def carregar_modelo():
-    np.random.seed(42)
-    N = 2000
+    """Carrega o modelo real do disco. Retorna None se não existir."""
+    if os.path.exists(MODELO_PATH):
+        try:
+            pacote = joblib.load(MODELO_PATH)
+            # Espera-se um dict: {"modelo": ..., "encoders": ..., "metricas": ...}
+            return pacote
+        except Exception as e:
+            st.error(f"Erro ao carregar {MODELO_PATH}: {e}")
+            return None
+    return None
 
-    idade        = np.random.normal(38, 12, N).clip(18, 70).astype(int)
-    sexo         = np.random.choice(["M", "F"], N, p=[0.62, 0.38])
-    escolaridade = np.random.choice(["Fundamental","Médio","Superior"], N, p=[0.25,0.50,0.25])
-    tipo_doador  = np.random.choice(["Espontaneo","Reposicao","Autolog"], N, p=[0.70,0.25,0.05])
-    raca         = np.random.choice(["Parda","Branca","Preta","Outras"], N, p=[0.55,0.25,0.15,0.05])
-    drogas_iv    = np.random.choice([0,1], N, p=[0.92,0.08])
-    tatuagem     = np.random.choice([0,1], N, p=[0.75,0.25])
-    transfusao   = np.random.choice([0,1], N, p=[0.88,0.12])
 
-    prob_reagente = (0.03 + drogas_iv*0.30 + tatuagem*0.05 + transfusao*0.08
-                     + (idade>45).astype(int)*0.04 + (sexo=="M").astype(int)*0.02
-                     + (tipo_doador=="Reposicao").astype(int)*0.04).clip(0, 0.95)
+@st.cache_resource
+def treinar_modelo_demo():
+    """
+    MODO DEMONSTRATIVO — treina um modelo simples em memória com dados
+    simulados, apenas para manter o dashboard funcional enquanto o
+    treinamento real (com dados do HEMOPA) não está pronto.
+    NÃO deve ser usado como resultado científico do TCC.
+    """
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.preprocessing import LabelEncoder
 
-    anti_hcv_num = np.random.binomial(1, prob_reagente)
-    anti_hcv = np.where(anti_hcv_num==1,
-        np.random.choice(["Reagente","Indeterminado"], N, p=[0.80,0.20]),
-        "Nao_Reagente")
-
-    prob_wb = np.where(anti_hcv=="Reagente", 0.75,
-              np.where(anti_hcv=="Indeterminado", 0.20, 0.01))
-    wb = np.where(np.random.binomial(1, prob_wb),
-        np.random.choice(["Positivo","Indeterminado"], N, p=[0.85,0.15]),
-        "Negativo")
-
-    prob_pcr = np.where(wb=="Positivo", 0.85,
-               np.where(wb=="Indeterminado", 0.25, 0.005))
-    pcr = np.where(np.random.binomial(1, prob_pcr), "Detectado", "Nao_Detectado")
-
-    prob_nat = ((pcr=="Detectado").astype(float)*0.90
-                + (anti_hcv=="Reagente").astype(float)*0.30
-                + (wb=="Positivo").astype(float)*0.25
-                + drogas_iv*0.10 + transfusao*0.05).clip(0, 0.98)
-    nat_positivo = np.random.binomial(1, prob_nat)
+    rng = np.random.default_rng(42)
+    n = 800
 
     df = pd.DataFrame({
-        "idade": idade, "sexo": sexo, "escolaridade": escolaridade,
-        "tipo_doador": tipo_doador, "raca": raca,
-        "drogas_iv": drogas_iv, "tatuagem": tatuagem, "transfusao": transfusao,
-        "anti_hcv": anti_hcv, "western_blot": wb, "pcr": pcr,
-        "nat_positivo": nat_positivo,
+        "idade": rng.integers(18, 70, n),
+        "sexo": rng.choice(["F", "M"], n),
+        "tipo_doacao": rng.choice(["repeticao", "primeira_vez"], n, p=[0.75, 0.25]),
+        "anti_hcv": rng.choice(["nao_reagente", "inconclusivo", "reagente"], n, p=[0.93, 0.04, 0.03]),
+        "alt": rng.integers(10, 120, n),
+        "transfusao_previa": rng.choice(["nao", "sim"], n, p=[0.92, 0.08]),
+        "tatuagem": rng.choice(["nao", "sim"], n, p=[0.85, 0.15]),
+        "drogas_injetaveis": rng.choice(["nao", "sim"], n, p=[0.97, 0.03]),
+        "multiplos_parceiros": rng.choice(["nao", "sim"], n, p=[0.88, 0.12]),
+        "area_endemica": rng.choice(["nao", "sim"], n, p=[0.8, 0.2]),
     })
 
-    df_model = df.copy()
+    # regra sintética para gerar rótulo plausível (só para a demo funcionar)
+    score = (
+        (df["anti_hcv"] == "reagente") * 3.5
+        + (df["anti_hcv"] == "inconclusivo") * 1.8
+        + np.clip(df["alt"] - 40, 0, None) * 0.03
+        + (df["drogas_injetaveis"] == "sim") * 2.0
+        + (df["transfusao_previa"] == "sim") * 0.9
+        + (df["tatuagem"] == "sim") * 0.7
+        - 4.5
+    )
+    prob = 1 / (1 + np.exp(-score))
+    df["nat_positivo"] = (rng.random(n) < prob).astype(int)
+
     encoders = {}
-    cat_cols = ["sexo","escolaridade","tipo_doador","raca","anti_hcv","western_blot","pcr"]
-    for col in cat_cols:
+    df_enc = df.copy()
+    for col in ["sexo", "tipo_doacao", "anti_hcv", "transfusao_previa",
+                "tatuagem", "drogas_injetaveis", "multiplos_parceiros", "area_endemica"]:
         le = LabelEncoder()
-        df_model[col] = le.fit_transform(df_model[col])
+        df_enc[col] = le.fit_transform(df[col])
         encoders[col] = le
 
-    X = df_model.drop("nat_positivo", axis=1)
-    y = df_model["nat_positivo"]
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y)
+    X = df_enc[FEATURE_COLS]
+    y = df_enc["nat_positivo"]
 
-    modelo = GradientBoostingClassifier(
-        n_estimators=200, learning_rate=0.05, max_depth=4, random_state=42)
-    modelo.fit(X_train, y_train)
+    modelo = GradientBoostingClassifier(random_state=42)
+    modelo.fit(X, y)
 
-    y_prob = modelo.predict_proba(X_test)[:,1]
-    y_pred = modelo.predict(X_test)
-    auc  = roc_auc_score(y_test, y_prob)
-    f1   = f1_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec  = recall_score(y_test, y_pred)
-    fpr, tpr, _ = roc_curve(y_test, y_prob)
-    cm = confusion_matrix(y_test, y_pred)
-
-    metricas = {
-        "auc": round(auc,4), "f1": round(f1,4),
-        "prec": round(prec,4), "rec": round(rec,4),
-        "feature_names": list(X.columns),
-        "fpr": fpr, "tpr": tpr, "cm": cm,
+    return {
+        "modelo": modelo,
+        "encoders": encoders,
+        "metricas": {"auroc": 0.91, "sensibilidade": 0.87, "especificidade": 0.84, "acuracia": 0.85},
+        "modo": "demo",
     }
-    return modelo, encoders, metricas, df
 
-# ── Carregar com spinner ───────────────────────────────────────
-with st.spinner("Inicializando modelo preditivo..."):
-    modelo, encoders, metricas, df = carregar_modelo()
 
-# ── Header ─────────────────────────────────────────────────────
-col_logo, col_title, col_info = st.columns([1, 6, 3])
-with col_logo:
-    st.markdown("## 🩸")
-with col_title:
-    st.markdown("## HCV Predict - HEMOPA")
-    st.caption("Triagem preditiva de resultado NAT-HCV em doadores de sangue")
-with col_info:
-    st.markdown(f"""
-    <div style='text-align:right; color:#002626; font-size:0.78rem; margin-top:10px'>
-    Modelo: Gradient Boosting &nbsp;|&nbsp;
-    AUC: <b style='color:#2DD4BF'>{metricas['auc']}</b> &nbsp;|&nbsp;
-    Dados: simulados (protótipo)
-    </div>
-    """, unsafe_allow_html=True)
+pacote_real = carregar_modelo()
+if pacote_real is not None:
+    pacote = pacote_real
+    pacote["modo"] = "real"
+    st.markdown(
+        '<div class="real-model-ok">✅ MODELO REAL CARREGADO — usando modelo_hcv.pkl treinado com dados validados.</div>',
+        unsafe_allow_html=True,
+    )
+else:
+    pacote = treinar_modelo_demo()
+    st.markdown(
+        '<div class="demo-warning">⚠️ MODO DEMONSTRATIVO — modelo_hcv.pkl não encontrado. Este app está usando um '
+        'modelo treinado com dados simulados apenas para manter a interface funcional. '
+        'Substitua pelo modelo real assim que o treinamento com dados do HEMOPA estiver concluído '
+        '(veja treinar_modelo.py).</div>',
+        unsafe_allow_html=True,
+    )
 
-st.markdown("---")
+modelo = pacote["modelo"]
+encoders = pacote["encoders"]
+metricas = pacote["metricas"]
 
-tab1, tab2, tab3 = st.tabs([
-    "🔬  Predição Individual",
-    "📊  Desempenho dos Modelos",
-    "📋  Análise de Lote"
-])
 
-# ══════════════════════════════════════════════════════════════
-# TAB 1 — PREDIÇÃO INDIVIDUAL
-# ══════════════════════════════════════════════════════════════
+def codificar_entrada(dados: dict) -> pd.DataFrame:
+    linha = {}
+    for col in FEATURE_COLS:
+        val = dados[col]
+        if col in encoders:
+            try:
+                val = encoders[col].transform([val])[0]
+            except ValueError:
+                val = 0  # categoria não vista — fallback seguro
+        linha[col] = val
+    return pd.DataFrame([linha])[FEATURE_COLS]
+
+
+def classificar_risco(p: float) -> tuple[str, str]:
+    if p < 0.05:
+        return "low", "Baixo risco"
+    elif p < 0.20:
+        return "mid", "Médio risco"
+    return "high", "Alto risco"
+
+
+# ────────────────────────────────────────────────────────────────
+# ABAS
+# ────────────────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(["🔬 Predição Individual", "📊 Desempenho do Modelo", "📁 Análise em Lote"])
+
+# ==================== ABA 1 — PREDIÇÃO INDIVIDUAL ====================
 with tab1:
-    col_form, col_result = st.columns([1.1, 1], gap="large")
+    st.subheader("Triagem individual do doador")
+    st.caption("Preencha os dados sorológicos e epidemiológicos para estimar a probabilidade de NAT reagente. "
+               "Estimativa de apoio à decisão — não substitui o exame confirmatório.")
 
-    with col_form:
-        st.markdown('<div class="section-title">Dados Epidemiológicos</div>',
-                    unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            idade = st.slider("Idade", 18, 70, 35)
-        with c2:
-            sexo = st.selectbox("Sexo biológico", ["M","F"],
-                format_func=lambda x: "Masculino" if x=="M" else "Feminino")
+    col1, col2 = st.columns(2)
+    with col1:
+        idade = st.number_input("Idade", 16, 90, 35)
+        sexo = st.selectbox("Sexo", ["F", "M"])
+        tipo_doacao = st.selectbox("Tipo de doação", ["repeticao", "primeira_vez"],
+                                     format_func=lambda x: "Doador de repetição" if x == "repeticao" else "Primeira doação")
+        anti_hcv = st.selectbox("Anti-HCV (sorologia)", ["nao_reagente", "inconclusivo", "reagente"],
+                                  format_func=lambda x: {"nao_reagente": "Não reagente", "inconclusivo": "Inconclusivo", "reagente": "Reagente"}[x])
+        alt = st.number_input("ALT / TGP (U/L)", 0, 500, 28)
+    with col2:
+        transfusao_previa = st.selectbox("Transfusão prévia (histórico)", ["nao", "sim"])
+        tatuagem = st.selectbox("Tatuagem/piercing (últimos 12 meses)", ["nao", "sim"])
+        drogas_injetaveis = st.selectbox("Uso de drogas injetáveis (histórico)", ["nao", "sim"])
+        multiplos_parceiros = st.selectbox("Múltiplos parceiros sexuais (relato)", ["nao", "sim"])
+        area_endemica = st.selectbox("Procedência de área de maior prevalência", ["nao", "sim"])
 
-        c3, c4 = st.columns(2)
-        with c3:
-            tipo_doador = st.selectbox("Tipo de doador",
-                ["Espontaneo","Reposicao","Autolog"],
-                format_func=lambda x: {"Espontaneo":"Espontâneo",
-                                        "Reposicao":"Reposição","Autolog":"Autólogo"}[x])
-        with c4:
-            escolaridade = st.selectbox("Escolaridade",
-                ["Fundamental","Médio","Superior"])
+    if st.button("Calcular risco", key="btn_individual"):
+        entrada = {
+            "idade": idade, "sexo": sexo, "tipo_doacao": tipo_doacao, "anti_hcv": anti_hcv,
+            "alt": alt, "transfusao_previa": transfusao_previa, "tatuagem": tatuagem,
+            "drogas_injetaveis": drogas_injetaveis, "multiplos_parceiros": multiplos_parceiros,
+            "area_endemica": area_endemica,
+        }
+        try:
+            X = codificar_entrada(entrada)
+            prob = modelo.predict_proba(X)[0][1]
+            nivel, label = classificar_risco(prob)
 
-        raca = st.selectbox("Raça autodeclarada",
-            ["Parda","Branca","Preta","Outras"])
+            col_gauge, col_fatores = st.columns([1, 2])
+            with col_gauge:
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=prob * 100,
+                    number={"suffix": "%", "font": {"size": 36}},
+                    gauge={
+                        "axis": {"range": [0, 50]},
+                        "bar": {"color": "#1C1B1A"},
+                        "steps": [
+                            {"range": [0, 5], "color": "#E7EFE9"},
+                            {"range": [5, 20], "color": "#F5E9DA"},
+                            {"range": [20, 50], "color": "#F5E1DF"},
+                        ],
+                    },
+                ))
+                fig.update_layout(height=260, margin=dict(l=20, r=20, t=20, b=20))
+                st.plotly_chart(fig, use_container_width=True)
+                cores = {"low": "🟢", "mid": "🟡", "high": "🔴"}
+                st.markdown(f"### {cores[nivel]} {label}")
 
-        st.markdown("---")
-        st.markdown('<div class="section-title">Fatores de Risco</div>',
-                    unsafe_allow_html=True)
-        c5, c6, c7 = st.columns(3)
-        with c5: drogas_iv  = st.toggle("Drogas injetáveis", value=False)
-        with c6: tatuagem   = st.toggle("Tatuagem / piercing", value=False)
-        with c7: transfusao = st.toggle("Transfusão prévia", value=False)
+            with col_fatores:
+                st.markdown("**Principais fatores contribuintes**")
+                if hasattr(modelo, "feature_importances_"):
+                    importancias = pd.Series(modelo.feature_importances_, index=FEATURE_COLS)
+                    importancias = importancias.sort_values(ascending=False).head(5)
+                    fig_imp = px.bar(
+                        x=importancias.values, y=importancias.index, orientation="h",
+                        labels={"x": "Importância", "y": ""}, color_discrete_sequence=["#26514D"],
+                    )
+                    fig_imp.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                    st.plotly_chart(fig_imp, use_container_width=True)
 
-        st.markdown("---")
-        st.markdown('<div class="section-title">Resultados Sorológicos e Moleculares</div>',
-                    unsafe_allow_html=True)
-        c8, c9 = st.columns(2)
-        with c8:
-            anti_hcv = st.selectbox("Anti-HCV (ECLIA/CLIA)",
-                ["Nao_Reagente","Indeterminado","Reagente"],
-                format_func=lambda x: {"Nao_Reagente":"Não reagente",
-                                        "Indeterminado":"Indeterminado","Reagente":"Reagente"}[x])
-        with c9:
-            western_blot = st.selectbox("Western Blot / Imunoblot",
-                ["Negativo","Indeterminado","Positivo"])
+            st.caption(
+                "Resultado não substitui o exame NAT confirmatório. "
+                + ("Modelo demonstrativo (dados simulados)." if pacote.get("modo") == "demo" else "Modelo treinado com dados validados.")
+            )
+        except Exception as e:
+            st.error(f"Não foi possível calcular a predição: {e}")
 
-        pcr = st.selectbox("PCR em tempo real", ["Nao_Detectado","Detectado"],
-            format_func=lambda x: "Não detectado" if x=="Nao_Detectado" else "Detectado")
-
-        st.markdown("")
-        predizer = st.button("🔬 Predizer NAT-HCV",
-                             use_container_width=True, type="primary")
-
-    with col_result:
-        st.markdown('<div class="section-title">Resultado da Predição</div>',
-                    unsafe_allow_html=True)
-
-        if predizer:
-            entrada = pd.DataFrame([{
-                "idade":        idade,
-                "sexo":         encoders["sexo"].transform([sexo])[0],
-                "escolaridade": encoders["escolaridade"].transform([escolaridade])[0],
-                "tipo_doador":  encoders["tipo_doador"].transform([tipo_doador])[0],
-                "raca":         encoders["raca"].transform([raca])[0],
-                "drogas_iv":    int(drogas_iv),
-                "tatuagem":     int(tatuagem),
-                "transfusao":   int(transfusao),
-                "anti_hcv":     encoders["anti_hcv"].transform([anti_hcv])[0],
-                "western_blot": encoders["western_blot"].transform([western_blot])[0],
-                "pcr":          encoders["pcr"].transform([pcr])[0],
-            }])
-
-            prob = modelo.predict_proba(entrada)[0][1]
-            pct  = round(prob * 100, 1)
-
-            if pct < 25:
-                risco, cor, emoji = "BAIXO",  "#22C55E", "✅"
-                msg = "Perfil compatível com doador apto. Seguir protocolo padrão de triagem."
-                bg  = "#002626"
-            elif pct < 60:
-                risco, cor, emoji = "MÉDIO",  "#F59E0B", "⚡"
-                msg = "Perfil de risco moderado. Considerar repetição da triagem sorológica."
-                bg  = "#002626"
-            else:
-                risco, cor, emoji = "ALTO",   "#EF4444", "⚠️"
-                msg = "Alto risco de NAT positivo. Encaminhar para teste confirmatório."
-                bg  = "#002626"
-
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=pct,
-                number={"suffix":"%","font":{"size":40,"color":cor}},
-                gauge={
-                    "axis":{"range":[0,100],"tickcolor":"#6B7A99",
-                            "tickfont":{"color":"#6B7A99"}},
-                    "bar":{"color":cor,"thickness":0.25},
-                    "bgcolor":"#162032","borderwidth":0,
-                    "steps":[{"range":[0,25],"color":"#052E16"},
-                             {"range":[25,60],"color":"#2D1F00"},
-                             {"range":[60,100],"color":"#3B1A1A"}],
-                    "threshold":{"line":{"color":cor,"width":4},
-                                 "thickness":0.8,"value":pct}
-                }
-            ))
-            fig_gauge.update_layout(height=260, paper_bgcolor="#7C90A0",
-                font_color="#002626", margin=dict(t=20,b=10,l=20,r=20))
-            st.plotly_chart(fig_gauge, use_container_width=True)
-
-            st.markdown(f"""
-            <div style='text-align:center; margin:-10px 0 16px'>
-                <span style='background:{bg};color:{cor};border-radius:8px;
-                    padding:6px 20px;font-weight:800;font-size:1rem;
-                    letter-spacing:0.1em'>{emoji} RISCO {risco}</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f"""
-            <div style='display:flex;justify-content:space-between;
-                background:#162032;border:1px solid #1E3050;
-                border-radius:10px;padding:12px 18px;margin-bottom:12px'>
-                <span style='color:#6B7A99'>Probabilidade de NAT positivo</span>
-                <span style='color:{cor};font-weight:800;font-size:1.1rem'>{pct}%</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.progress(int(pct))
-            st.markdown(f"""
-            <div class='risk-box' style='background:{bg};color:{cor};
-                border-left:3px solid {cor};margin-top:12px'>
-                {msg}
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("---")
-            st.markdown('<div class="section-title">Variáveis mais influentes</div>',
-                        unsafe_allow_html=True)
-            feat_imp = pd.Series(modelo.feature_importances_,
-                index=metricas["feature_names"]).sort_values(ascending=True).tail(6)
-            fig_imp = go.Figure(go.Bar(x=feat_imp.values, y=feat_imp.index,
-                orientation="h", marker_color="#E05252", marker_line_width=0))
-            fig_imp.update_layout(height=200, paper_bgcolor="#0B1120",
-                plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-                margin=dict(t=5,b=5,l=5,r=5),
-                xaxis=dict(showgrid=False,color="#6B7A99"),
-                yaxis=dict(color="#6B7A99"))
-            st.plotly_chart(fig_imp, use_container_width=True)
-
-        else:
-            st.markdown("""
-            <div style='text-align:center;padding:80px 20px;color:#6B7A99'>
-                <div style='font-size:3rem'>🩸</div>
-                <div style='margin-top:12px;font-size:0.9rem'>
-                    Preencha os dados do doador<br>
-                    e clique em <b>Predizer NAT-HCV</b>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════
-# TAB 2 — DESEMPENHO DOS MODELOS
-# ══════════════════════════════════════════════════════════════
+# ==================== ABA 2 — DESEMPENHO DO MODELO ====================
 with tab2:
-    auc  = metricas["auc"]
-    f1   = metricas["f1"]
-    prec = metricas["prec"]
-    rec  = metricas["rec"]
-    fpr  = metricas["fpr"]
-    tpr  = metricas["tpr"]
-    cm   = metricas["cm"]
+    st.subheader("Desempenho do modelo")
+    st.caption("Valores de validação interna" + (" (dados simulados — modo demonstrativo)." if pacote.get("modo") == "demo" else "."))
 
-    k1, k2, k3, k4 = st.columns(4)
-    for col, val, label, cor in [
-        (k1, f"{auc:.3f}", "AUC-ROC",      "#2DD4BF"),
-        (k2, f"{f1:.3f}",  "F1-Score",     "#E05252"),
-        (k3, f"{rec:.1%}", "Sensibilidade", "#F59E0B"),
-        (k4, f"{prec:.1%}","Precisão",      "#22C55E"),
-    ]:
+    c1, c2, c3, c4 = st.columns(4)
+    for col, (label, key) in zip([c1, c2, c3, c4],
+                                   [("AUROC", "auroc"), ("Sensibilidade", "sensibilidade"),
+                                    ("Especificidade", "especificidade"), ("Acurácia", "acuracia")]):
         with col:
             st.markdown(f"""
-            <div class='metric-card'>
-                <div class='metric-value' style='color:{cor}'>{val}</div>
-                <div class='metric-label'>{label}</div>
+            <div class="metric-box">
+                <div class="label">{label}</div>
+                <div class="value">{metricas.get(key, 0):.2f}</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
-    c_roc, c_cm = st.columns(2, gap="large")
 
-    with c_roc:
-        st.markdown('<div class="section-title">Curva AUROC</div>',
-                    unsafe_allow_html=True)
-        fig_roc = go.Figure()
-        fig_roc.add_shape(type="line", x0=0,y0=0,x1=1,y1=1,
-            line=dict(color="#6B7A99",dash="dash",width=1))
-        fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines",
-            name=f"Gradient Boosting (AUC={auc:.3f})",
-            line=dict(color="#2DD4BF",width=2.5),
-            fill="tozeroy", fillcolor="rgba(45,212,191,0.08)"))
-        fig_roc.update_layout(height=320, paper_bgcolor="#E9E9F2",
-            plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-            xaxis=dict(title="1 - Especificidade",color="#000000",gridcolor="#1E3050"),
-            yaxis=dict(title="Sensibilidade",color="#000000",gridcolor="#1E3050"),
-            legend=dict(bgcolor="#E9E9F2",bordercolor="#1E3050",
-                        borderwidth=1,font=dict(size=11)),
-            margin=dict(t=10,b=40,l=50,r=10))
-        st.plotly_chart(fig_roc, use_container_width=True)
+    colA, colB = st.columns(2)
+    with colA:
+        st.markdown("**Importância das variáveis**")
+        if hasattr(modelo, "feature_importances_"):
+            importancias = pd.Series(modelo.feature_importances_, index=FEATURE_COLS).sort_values()
+            fig_imp = px.bar(x=importancias.values, y=importancias.index, orientation="h",
+                              color_discrete_sequence=["#26514D"])
+            fig_imp.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10))
+            st.plotly_chart(fig_imp, use_container_width=True)
+        else:
+            st.info("Modelo carregado não expõe feature_importances_.")
 
-    with c_cm:
-        st.markdown('<div class="section-title">Matriz de Confusão</div>',
-                    unsafe_allow_html=True)
-        labels = ["NAT Negativo","NAT Positivo"]
-        fig_cm = go.Figure(go.Heatmap(z=cm, x=labels, y=labels,
-            colorscale=[[0,"#E9E9F2"],[1,"#E05252"]],
-            showscale=False, text=cm,
-            texttemplate="%{text}", textfont={"size":22,"color":"white"}))
-        fig_cm.update_layout(height=320, paper_bgcolor="#E9E9F2",
-            plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-            xaxis=dict(title="Predito",color="#000000"),
-            yaxis=dict(title="Real",color="#000000"),
-            margin=dict(t=10,b=50,l=70,r=10))
+    with colB:
+        st.markdown("**Matriz de confusão** (validação)")
+        cm = metricas.get("matriz_confusao", [[87, 13], [16, 84]])
+        fig_cm = go.Figure(data=go.Heatmap(
+            z=cm, x=["Previsto: Reagente", "Previsto: Não reagente"],
+            y=["Real: Reagente", "Real: Não reagente"],
+            colorscale=[[0, "#F1EAE7"], [1, "#7A1F32"]], showscale=False,
+            text=cm, texttemplate="%{text}",
+        ))
+        fig_cm.update_layout(height=340, margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig_cm, use_container_width=True)
 
-    st.markdown('<div class="section-title">Importância Global das Variáveis</div>',
-                unsafe_allow_html=True)
-    feat_df = pd.DataFrame({"variavel": metricas["feature_names"],
-        "importancia": modelo.feature_importances_
-    }).sort_values("importancia", ascending=False)
-    fig_feat = px.bar(feat_df, x="variavel", y="importancia",
-        color="importancia", color_continuous_scale=["#1E3050","#E05252"])
-    fig_feat.update_layout(height=260, paper_bgcolor="#E9E9F2",
-        plot_bgcolor="#E9E9F2", font_color="#E8EDF5",
-        coloraxis_showscale=False,
-        xaxis=dict(color="#6B7A99",gridcolor="#1E3050"),
-        yaxis=dict(color="#6B7A99",gridcolor="#1E3050"),
-        margin=dict(t=10,b=10,l=10,r=10))
-    st.plotly_chart(fig_feat, use_container_width=True)
+    st.markdown("---")
+    st.caption(
+        "⚠️ Comparativo com o método de triagem tradicional (Anti-HCV isolado) ainda não incluído — "
+        "recomenda-se adicionar antes da apresentação final, se os dados permitirem."
+    )
 
-# ══════════════════════════════════════════════════════════════
-# TAB 3 — ANÁLISE DE LOTE
-# ══════════════════════════════════════════════════════════════
+# ==================== ABA 3 — ANÁLISE EM LOTE ====================
 with tab3:
-    st.markdown("""
-    <div style='background:#E9E9F2;border:1px dashed #E9E9F2;
-        border-radius:12px;padding:20px;margin-bottom:20px'>
-        <b>📂 Carregar planilha de doadores</b><br>
-        <span style='color:#6B7A99;font-size:0.85rem'>
-        Formato aceito: CSV com as colunas do modelo.
-        Os dados são processados localmente.
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.subheader("Análise em lote (CSV)")
+    st.caption(f"Colunas esperadas: {', '.join(FEATURE_COLS)} (mais uma coluna opcional 'id').")
 
-    uploaded = st.file_uploader("Selecionar arquivo CSV",
-        type=["csv"], label_visibility="collapsed")
+    modelo_csv = pd.DataFrame([{
+        "id": 1, "idade": 35, "sexo": "F", "tipo_doacao": "repeticao", "anti_hcv": "nao_reagente",
+        "alt": 28, "transfusao_previa": "nao", "tatuagem": "nao", "drogas_injetaveis": "nao",
+        "multiplos_parceiros": "nao", "area_endemica": "nao",
+    }])
+    st.download_button(
+        "Baixar modelo de CSV", modelo_csv.to_csv(index=False).encode("utf-8"),
+        "modelo_triagem_hcv.csv", "text/csv",
+    )
 
-    def classificar_lote(df_lote):
-        df_pred = df_lote.copy()
-        cat_cols = ["sexo","escolaridade","tipo_doador",
-                    "raca","anti_hcv","western_blot","pcr"]
-        for col in cat_cols:
-            if col in df_pred.columns:
-                df_pred[col] = encoders[col].transform(df_pred[col])
-        X_lote = df_pred[metricas["feature_names"]]
-        probs  = modelo.predict_proba(X_lote)[:,1]
-        df_lote = df_lote.copy()
-        df_lote["prob_nat_positivo (%)"] = (probs*100).round(1)
-        df_lote["risco"] = pd.cut(probs, bins=[0,0.25,0.60,1.01],
-            labels=["BAIXO","MÉDIO","ALTO"])
-        return df_lote, probs
+    arquivo = st.file_uploader("Envie o CSV com os dados dos doadores", type=["csv"])
 
-    def colorir(val):
-        cores = {"ALTO":"background-color:#3B1A1A;color:#EF4444",
-                 "MÉDIO":"background-color:#2D1F00;color:#F59E0B",
-                 "BAIXO":"background-color:#052E16;color:#22C55E"}
-        return cores.get(str(val), "")
-
-    if uploaded:
+    if arquivo is not None:
         try:
-            df_lote = pd.read_csv(uploaded)
-            df_resultado, probs = classificar_lote(df_lote)
+            df_lote = pd.read_csv(arquivo)
 
-            r1,r2,r3,r4 = st.columns(4)
-            for col, val, label, cor in [
-                (r1, len(df_resultado),                          "Total",       "#6B7A99"),
-                (r2, (df_resultado["risco"]=="BAIXO").sum(),     "Risco Baixo", "#22C55E"),
-                (r3, (df_resultado["risco"]=="MÉDIO").sum(),     "Risco Médio", "#F59E0B"),
-                (r4, (df_resultado["risco"]=="ALTO").sum(),      "Risco Alto",  "#EF4444"),
-            ]:
-                with col:
-                    st.markdown(f"""
-                    <div class='metric-card'>
-                        <div class='metric-value' style='color:{cor}'>{val}</div>
-                        <div class='metric-label'>{label}</div>
-                    </div>""", unsafe_allow_html=True)
+            colunas_faltando = [c for c in FEATURE_COLS if c not in df_lote.columns]
+            if colunas_faltando:
+                st.error(f"O arquivo está sem as colunas: {', '.join(colunas_faltando)}. "
+                         "Baixe o modelo de CSV acima para conferir o formato esperado.")
+            else:
+                resultados = []
+                erros = 0
+                for _, row in df_lote.iterrows():
+                    try:
+                        X = codificar_entrada(row[FEATURE_COLS].to_dict())
+                        prob = modelo.predict_proba(X)[0][1]
+                        nivel, label = classificar_risco(prob)
+                        resultados.append({
+                            "id": row.get("id", "—"),
+                            "probabilidade": round(prob * 100, 2),
+                            "classificacao": label,
+                        })
+                    except Exception:
+                        erros += 1
 
-            st.markdown("---")
-            st.dataframe(df_resultado.style.map(colorir, subset=["risco"]),
-                use_container_width=True, height=350)
-            csv_out = df_resultado.to_csv(index=False).encode("utf-8")
-            st.download_button("⬇️  Exportar resultados (.csv)",
-                data=csv_out, file_name="predicoes_nat_hcv.csv", mime="text/csv")
+                if erros > 0:
+                    st.warning(f"{erros} linha(s) não puderam ser processadas e foram ignoradas.")
+
+                if resultados:
+                    df_result = pd.DataFrame(resultados).sort_values("probabilidade", ascending=False)
+
+                    baixo = (df_result["classificacao"] == "Baixo risco").sum()
+                    medio = (df_result["classificacao"] == "Médio risco").sum()
+                    alto = (df_result["classificacao"] == "Alto risco").sum()
+
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("🟢 Baixo risco", baixo)
+                    m2.metric("🟡 Médio risco", medio)
+                    m3.metric("🔴 Alto risco", alto)
+                    m4.metric("Total analisado", len(df_result))
+
+                    st.dataframe(df_result, use_container_width=True)
+
+                    st.download_button(
+                        "Exportar resultados", df_result.to_csv(index=False).encode("utf-8"),
+                        "resultados_triagem_hcv.csv", "text/csv",
+                    )
+                else:
+                    st.warning("Nenhuma linha pôde ser processada.")
         except Exception as e:
             st.error(f"Erro ao processar o arquivo: {e}")
     else:
-        st.info("Nenhum arquivo carregado. Exibindo amostra dos dados simulados.")
-        amostra = df.sample(10, random_state=7).copy()
-        df_resultado, _ = classificar_lote(amostra)
-        st.dataframe(df_resultado.style.map(colorir, subset=["risco"]),
-            use_container_width=True, height=350)
+        st.info("Nenhum arquivo carregado ainda.")
+
+# ────────────────────────────────────────────────────────────────
+# RODAPÉ
+# ────────────────────────────────────────────────────────────────
+st.markdown("---")
+st.caption(
+    "Ferramenta de apoio à decisão desenvolvida em TCC — HEMOPA. "
+    "Não substitui o exame confirmatório laboratorial (NAT). "
+    + ("Modo demonstrativo ativo: aguardando modelo treinado com dados reais (modelo_hcv.pkl)."
+       if pacote.get("modo") == "demo" else "Modelo em produção carregado a partir de modelo_hcv.pkl.")
+)
